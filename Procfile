@@ -1,1 +1,1 @@
-worker: python magnolia_scan.py
+worker: python3 magnolia_scan.py
