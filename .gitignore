@@ -1,0 +1,10 @@
+.env
+venv/
+__pycache__/
+*.pyc
+oracle_cache.json
+farm_log.json
+analytics.json
+paperclip_memory.json
+hermes_log.json
+.report_sent_today
