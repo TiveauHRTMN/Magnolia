@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python311", "gcc", "rustc", "cargo"]
+nixPkgs = ["python311"]
 
 [start]
 cmd = "python magnolia_scan.py"
