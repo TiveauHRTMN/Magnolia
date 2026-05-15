@@ -1,4 +1,4 @@
-httpx
-python-dotenv
-base58
-solders
+httpx>=0.27
+python-dotenv>=1.0
+base58>=2.1
+solders>=0.21

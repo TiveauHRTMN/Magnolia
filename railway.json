@@ -4,8 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python3.11 magnolia_scan.py",
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "startCommand": "/opt/venv/bin/python -u magnolia_scan.py",
+    "restartPolicyType": "ALWAYS"
   }
 }

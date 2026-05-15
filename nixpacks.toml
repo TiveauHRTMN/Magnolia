@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip"]
+nixPkgs = ["python311", "python311Packages.pip", "gcc"]
 
 [start]
-cmd = "python3.11 magnolia_scan.py"
+cmd = "/opt/venv/bin/python -u magnolia_scan.py"
