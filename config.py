@@ -61,7 +61,7 @@ TOKEN_DECIMALS = {
 OPENROUTER_MODEL = "nousresearch/hermes-4-70b"   # Hermes 4 70B — dagelijkse besluitvorming
 DEEPSEEK_FLASH_MODEL = "deepseek/deepseek-v4-flash"  # DeepSeek V4 Flash — snelle fallback
 DEEPSEEK_PRO_MODEL = "deepseek/deepseek-v4-pro"      # DeepSeek V4 Pro — Oracle fallback
-ORACLE_MODEL = "openai/gpt-5.5-pro"                   # GPT-5.5 Pro — eenmalige ochtendvoorspelling
+ORACLE_MODEL = "moonshotai/kimi-k2.6"                 # Kimi K2.6 — eenmalige ochtendvoorspelling
 ORACLE_REASONING_EFFORT = "xhigh"
-ORACLE_CONFIDENCE_THRESHOLD = 70                      # Min. confidence voor directe actie
+ORACLE_CONFIDENCE_THRESHOLD = 60                      # Min. confidence voor directe actie
 ORACLE_EMAIL_ENABLED = os.getenv("ORACLE_EMAIL_ENABLED", "true").lower() == "true"

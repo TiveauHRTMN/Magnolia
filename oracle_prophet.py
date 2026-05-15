@@ -1,6 +1,6 @@
 """
 Magnolia Oracle — dagelijkse macro-voorspelling voor Magnolia Oracle.
-Draait eenmaal per ochtend. Gebruikt GPT-5.5 Pro via OpenRouter.
+Draait eenmaal per ochtend. Model via config.ORACLE_MODEL (OpenRouter).
 Slaat voorspelling op in oracle_cache.json (TTL: 20 uur).
 """
 import os
@@ -34,6 +34,7 @@ MAX_ABS_SOL_RETURN_FOR_SCORE = 25.0
 
 
 def is_cache_fresh():
+    _hydrate_local_cache_from_supabase()
     if not os.path.exists(CACHE_FILE):
         return False
     try:
@@ -92,6 +93,72 @@ def _load_json(path, default):
 def _save_json(path, payload):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
+
+
+# Supabase persistente Oracle-cache (overleeft Railway-restarts)
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+SUPABASE_CACHE_ID = "magnolia_oracle"
+
+
+def _supabase_load_cache():
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/oracle_cache?id=eq.{SUPABASE_CACHE_ID}&select=payload&limit=1"
+        headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+        res = httpx.get(url, headers=headers, timeout=10.0)
+        if res.status_code != 200:
+            return None
+        rows = res.json()
+        if not rows:
+            return None
+        payload = rows[0].get("payload")
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+def _supabase_save_cache(payload):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/oracle_cache"
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        }
+        body = {
+            "id": SUPABASE_CACHE_ID,
+            "payload": payload,
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+        }
+        res = httpx.post(url, headers=headers, json=body, timeout=10.0)
+        return res.status_code in (200, 201, 204)
+    except Exception:
+        return False
+
+
+def _hydrate_local_cache_from_supabase():
+    remote = _supabase_load_cache()
+    if not remote:
+        return False
+    try:
+        local_saved_at = None
+        if os.path.exists(CACHE_FILE):
+            with open(CACHE_FILE, encoding="utf-8") as f:
+                local = json.load(f)
+            local_saved_at = local.get("saved_at")
+        remote_saved_at = remote.get("saved_at")
+        if local_saved_at and remote_saved_at and remote_saved_at <= local_saved_at:
+            return False
+        with open(CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(remote, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception:
+        return False
 
 
 def _get_latest_analytics():
@@ -856,7 +923,7 @@ def run_oracle():
         print("The Oracle: dagrun-cache geladen.", flush=True)
         return load_cache()
 
-    print("The Oracle: Activeren... GPT-5.5 Pro consulteren...", flush=True)
+    print(f"The Oracle: Activeren... {config.ORACLE_MODEL} consulteren...", flush=True)
     inputs = gather_oracle_inputs()
     feedback = inputs.get("feedback", {})
     macro_context = feedback.get("macro_context", {})
@@ -1012,9 +1079,9 @@ airdrop_targets: geordende lijst van ["Jupiter", "Sanctum", "Kamino"] — zet va
                 _save_json(LAST_PRIMARY_RESPONSE_FILE, primary_response)
                 content = primary_response["choices"][0]["message"].get("content")
                 content_model_used = f"{config.ORACLE_MODEL}:{config.ORACLE_REASONING_EFFORT}"
-                print("The Oracle: GPT-5.5 Pro antwoord ontvangen.", flush=True)
+                print(f"The Oracle: {config.ORACLE_MODEL} antwoord ontvangen.", flush=True)
         except Exception as e:
-            print(f"Oracle: GPT-5.5 Pro gefaald ({e}). Fallback naar DeepSeek V4 Pro...", flush=True)
+            print(f"Oracle: {config.ORACLE_MODEL} gefaald ({e}). Fallback naar DeepSeek V4 Pro...", flush=True)
 
     if not content and config.OPENROUTER_API_KEY:
         try:
@@ -1086,6 +1153,9 @@ airdrop_targets: geordende lijst van ["Jupiter", "Sanctum", "Kamino"] — zet va
 
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(prediction, f, indent=2, ensure_ascii=False)
+
+    if _supabase_save_cache(prediction):
+        print("The Oracle: Cache ook naar Supabase weggeschreven (restart-bestendig).", flush=True)
 
     print(
         f"The Oracle: Voorspelling opgeslagen. "
