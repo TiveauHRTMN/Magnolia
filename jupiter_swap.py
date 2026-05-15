@@ -64,6 +64,19 @@ def send_rpc_request(client, method, params):
         res.raise_for_status()
         return res.json()
 
+def get_quote(input_mint, output_mint, amount_lamports, slippage_bps=50):
+    quote_url = f"{JUP_BASE_URL}/quote"
+    params = {
+        "inputMint": input_mint,
+        "outputMint": output_mint,
+        "amount": str(amount_lamports),
+        "slippageBps": slippage_bps
+    }
+    with httpx.Client(timeout=15.0) as client:
+        res = client.get(quote_url, params=params)
+        res.raise_for_status()
+        return res.json()
+
 def swap(input_mint, output_mint, amount_lamports, slippage_bps=50):
     keypair = get_keypair()
     if not keypair:
@@ -73,20 +86,12 @@ def swap(input_mint, output_mint, amount_lamports, slippage_bps=50):
     try:
         # 1. Get Quote
         print(f"🔄 Magnolia vraagt quote aan via Public Jupiter API...")
-        quote_url = f"{JUP_BASE_URL}/quote"
-        params = {
-            "inputMint": input_mint,
-            "outputMint": output_mint,
-            "amount": str(amount_lamports),
-            "slippageBps": slippage_bps
-        }
-        
         with httpx.Client(timeout=30.0) as client:
-            res = client.get(quote_url, params=params)
-            if res.status_code != 200:
-                print(f"❌ Jupiter Quote Error: {res.status_code} - {res.text}")
+            try:
+                quote_data = get_quote(input_mint, output_mint, amount_lamports, slippage_bps)
+            except Exception as e:
+                print(f"❌ Jupiter Quote Error: {e}")
                 return None
-            quote_data = res.json()
             
             if "outAmount" not in quote_data:
                 print(f"❌ Quote mislukt: {quote_data}")
@@ -150,5 +155,5 @@ def swap(input_mint, output_mint, amount_lamports, slippage_bps=50):
                 print(f"❌ Transactie mislukt op RPC/Gateway: {result}")
 
     except Exception as e:
-        print(f"❌ Syndicaat Executiefout: {e}")
+        print(f"❌ Magnolia Oracle executiefout: {e}")
     return None

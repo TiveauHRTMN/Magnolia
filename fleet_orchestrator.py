@@ -22,6 +22,28 @@ class PaperclipFleet:
             print(f"Paperclip Memory Error: {e}")
 
     def audit(self, action_proposal):
+        if not isinstance(action_proposal, dict):
+            return False, "Decision is not a JSON object."
+
+        action = str(action_proposal.get("action", "")).upper()
+        if action not in {"HOLD", "SWAP", "DEPOSIT_KAMINO"}:
+            return False, f"Unknown action: {action or 'missing'}."
+
+        if action == "SWAP":
+            params = action_proposal.get("params")
+            if not isinstance(params, dict):
+                return False, "SWAP params missing."
+            if params.get("from") not in config.ALLOWED_TRADE_MINTS:
+                return False, "Source mint is not in the allowed universe."
+            if params.get("to") not in config.ALLOWED_TRADE_MINTS:
+                return False, "Target mint is not in the allowed universe."
+            try:
+                amount_sol = float(params.get("amount_sol", 0))
+            except (TypeError, ValueError):
+                return False, "Invalid amount_sol."
+            if amount_sol <= 0:
+                return False, "Trade amount must be positive."
+
         return True, "Audit passed."
 
 

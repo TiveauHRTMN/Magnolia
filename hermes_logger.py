@@ -28,7 +28,7 @@ def log_action(agent, action, details, status="success"):
         "agent_name": agent,
         "action_type": action,
         "description": details,
-        "metadata": {"status": status, "source": "magnolia_crypto_syndicate"}
+        "metadata": {"status": status, "source": "magnolia_oracle"}
     }
     
     try:
