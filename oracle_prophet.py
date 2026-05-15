@@ -6,7 +6,7 @@ Slaat voorspelling op in oracle_cache.json (TTL: 20 uur).
 import os
 import json
 import httpx
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -27,8 +27,12 @@ def is_cache_fresh():
         with open(CACHE_FILE) as f:
             cache = json.load(f)
         saved_at = datetime.fromisoformat(cache.get("saved_at", "2000-01-01"))
-        age_hours = (datetime.now() - saved_at).total_seconds() / 3600
-        return age_hours < CACHE_TTL_HOURS
+        now = datetime.now()
+        run_hour = getattr(config, "ORACLE_DAILY_RUN_HOUR", 9)
+        today_gate = now.replace(hour=run_hour, minute=0, second=0, microsecond=0)
+        required_after = today_gate if now >= today_gate else today_gate - timedelta(days=1)
+        age_hours = (now - saved_at).total_seconds() / 3600
+        return age_hours < CACHE_TTL_HOURS and saved_at >= required_after
     except Exception:
         return False
 
